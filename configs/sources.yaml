@@ -1,0 +1,55 @@
+# لیست منابع خبری. قبل از استفاده در پروداکشن، دسترسی و شرایط استفاده را بررسی کنید.
+feeds:
+  # سیاسی / ایران و جهان
+  - name: BBC Persian
+    category: politics
+    url: https://feeds.bbci.co.uk/persian/rss.xml
+    region: iran_world
+
+  - name: ISNA
+    category: politics
+    url: https://www.isna.ir/rss
+    region: iran
+
+  - name: IRNA
+    category: politics
+    url: https://www.irna.ir/rss
+    region: iran
+
+  - name: Tasnim
+    category: politics
+    url: https://www.tasnimnews.com/fa/rss/feed
+    region: iran
+
+  # اقتصادی
+  - name: ISNA Economy
+    category: economy
+    url: https://www.isna.ir/rss/tp/20
+    region: iran
+
+  - name: Reuters Business
+    category: economy
+    url: https://feeds.reuters.com/reuters/businessNews
+    region: world
+
+  # ورزشی
+  - name: ESPN
+    category: sports
+    url: https://www.espn.com/espn/rss/news
+    region: world
+
+  - name: Varzesh3
+    category: sports
+    url: https://www.varzesh3.ir/rss/all
+    region: iran
+
+  # فناوری
+  - name: The Verge
+    category: technology
+    url: https://www.theverge.com/rss/index.xml
+    region: world
+
+  - name: Digiato
+    category: technology
+    url: https://digiato.com/feed
+    region: iran
