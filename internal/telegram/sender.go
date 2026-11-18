@@ -19,6 +19,19 @@ type Sender struct {
 	HTTP                    *http.Client
 }
 
+func (s *Sender) SendBatch(messages []string) error {
+	for i, message := range messages {
+		if err := s.Send(message); err != nil {
+			return fmt.Errorf("send message %d/%d: %w", i+1, len(messages), err)
+		}
+		// Keep a small gap between consecutive Telegram API requests.
+		if i < len(messages)-1 {
+			time.Sleep(350 * time.Millisecond)
+		}
+	}
+	return nil
+}
+
 func (s *Sender) Send(text string) error {
 	payload := map[string]any{
 		"chat_id":                  s.ChatID,

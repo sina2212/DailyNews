@@ -29,11 +29,12 @@ func (c *Client) Summarize(ctx context.Context, a Article) (Result, error) {
 - title_fa (عنوان کوتاه فارسی)
 - summary_fa (خلاصه خبر حداکثر ۷۰ کلمه، ۲ تا ۴ جمله)
 - importance (عدد صحیح ۱ تا ۱۰)
-- category (دقیقاً یکی از این‌ها: politics, economy, sports, technology, other)
+- category (دقیقاً یکی از این‌ها: politics, economy, football, basketball, formula1, technology, other)
 - key_points (آرایه حداکثر ۳ نکته کلیدی)
 
 قوانین:
 - چیزی که در متن خبر نیست را جعل نکن.
+- اگر خبر ورزشی است، حتماً بین football (فوتبال)، basketball (بسکتبال) و formula1 (فرمول یک) انتخاب کن؛ sports عمومی استفاده نکن.
 - اگر متن ناکافی است، در خلاصه صریح بگو.
 - summary_fa حتماً کمتر یا مساوی ۷۰ کلمه باشد.
 
@@ -84,7 +85,10 @@ func (c *Client) Summarize(ctx context.Context, a Article) (Result, error) {
 	if result.Importance > 10 {
 		result.Importance = 10
 	}
-	if result.Category == "" {
+	switch result.Category {
+	case "politics", "economy", "football", "basketball", "formula1", "technology", "other":
+		// Keep the model's valid category.
+	default:
 		result.Category = a.Category
 	}
 	return result, nil

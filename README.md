@@ -4,10 +4,19 @@ Go + PostgreSQL service that collects RSS items, summarizes them in Persian thro
 
 ## Current MVP scope
 - Persian output; Iran + international coverage intent.
-- Sports, technology, cinema, gaming, politics/economy categories.
+- Politics, economy, technology, plus separate football, basketball and Formula 1 categories.
 - Daily delivery at `08:00` in configurable IANA timezone (default `Europe/Berlin`).
 - RSS ingestion and OpenAI-compatible Chat Completions API.
 - PostgreSQL persistence and Docker Compose deployment.
+
+## News categories and Telegram delivery
+
+- Sports are collected separately as `football`, `basketball`, and `formula1`.
+- Football includes an Iran-focused feed (Varzesh3) plus international publishers.
+- Basketball and Formula 1 use international publishers and are not dependent on Varzesh3.
+- Each populated category is sent as its own Telegram message. Long categories are split at article boundaries to stay below Telegram's message-size limit.
+- `MAX_ARTICLES_PER_CATEGORY` controls the maximum number of selected summaries per category (default: `20`). Set it in `.env` to change the count.
+- The current runtime feed registry is in `cmd/server/main.go`; `configs/sources.yaml` is maintained as a human-readable mirror. Keep both in sync when editing feeds.
 
 ## Important implementation notes
 This is a starter MVP, not a production-grade newsroom. The initial feed list is deliberately small and must be reviewed. Some feed URLs may change or reject automated access. Iran coverage is not complete until you add and validate a broader set of Persian and international feeds. RSS descriptions may be short; summaries must not invent missing details. The current scheduler is single-process and should be run as one app replica. For high reliability, add a persisted job/lease mechanism and Telegram chunking before scaling.
@@ -37,6 +46,7 @@ AI_BASE_URL=https://api.openai.com/v1
 AI_MODEL=gpt-4.1-mini
 APP_TIMEZONE=Europe/Berlin
 DIGEST_TIME=08:00
+MAX_ARTICLES_PER_CATEGORY=20
 ```
 
 The database password in `DATABASE_URL` must match `POSTGRES_PASSWORD`. If it contains reserved URL characters, URL-encode it.
@@ -86,9 +96,9 @@ Run from the repository root so the migration file can be found.
 - Review source licensing and RSS terms. Link to original publishers; do not republish full copyrighted articles.
 
 ## Known next steps before calling it production-ready
-1. Expand and validate Persian/Iranian feeds and add official sports, film, and game sources.
+1. Periodically validate the Persian/Iranian and sports RSS endpoints; feed availability can vary by network and publisher.
 2. Add robust HTML/entity cleanup, language detection, and cross-source semantic deduplication.
 3. Add a proper `processed_at`/retry workflow and persistent scheduler lock; currently the simple in-process scheduler is intended for one replica.
-4. Fix digest generation to select already-created summaries consistently, add a daily editorial overview, and chunk Telegram messages above Telegram's message limit.
+4. Add a daily editorial overview and persistent per-category delivery tracking (the current digest table stores one combined daily record).
 5. Add tests, health checks, metrics, structured delivery retries, and backup automation.
 6. Add bot commands (`/today`, `/weekly`, `/categories`) in the next iteration.

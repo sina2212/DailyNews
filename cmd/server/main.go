@@ -24,11 +24,11 @@ import (
 func main() {
 	// Load .env file if present
 	loaded := false
-	if loadDotEnv("../../.env") {
+	if loadDotEnv("../.env") {
 		fmt.Println("✅ .env loaded from current directory")
 		loaded = true
 	}
-	if loadDotEnv("../.env") {
+	if loadDotEnv(".env") {
 		fmt.Println("✅ .env loaded from parent directory")
 		loaded = true
 	}
@@ -63,14 +63,34 @@ func main() {
 	}
 
 	feeds := []collector.Feed{
-		{Name: "BBC Persian", Category: "politics", URL: "https://feeds.bbci.co.uk/persian/rss.xml", Region: "iran_world"},
+		// Politics / Iran and world
+		{Name: "DW Persian", Category: "politics", URL: "https://rss.dw.com/xml/rss-per-all_volltext", Region: "iran_world"},
+		{Name: "Radio Farda", Category: "politics", URL: "https://www.radiofarda.com/api/z-pqpiev-qpp", Region: "iran_world"},
+		{Name: "Iran International", Category: "politics", URL: "https://www.iranintl.com/fa/rss", Region: "iran_world"},
 		{Name: "ISNA", Category: "politics", URL: "https://www.isna.ir/rss", Region: "iran"},
 		{Name: "IRNA", Category: "politics", URL: "https://www.irna.ir/rss", Region: "iran"},
-		{Name: "Tasnim", Category: "politics", URL: "https://www.tasnimnews.com/fa/rss/feed", Region: "iran"},
+		{Name: "Mehr News", Category: "politics", URL: "https://www.mehrnews.com/rss", Region: "iran"},
+
+		// Economy / Iran and international
 		{Name: "ISNA Economy", Category: "economy", URL: "https://www.isna.ir/rss/tp/20", Region: "iran"},
-		{Name: "Reuters Business", Category: "economy", URL: "https://feeds.reuters.com/reuters/businessNews", Region: "world"},
-		{Name: "ESPN", Category: "sports", URL: "https://www.espn.com/espn/rss/news", Region: "world"},
-		{Name: "Varzesh3", Category: "sports", URL: "https://www.varzesh3.ir/rss/all", Region: "iran"},
+		{Name: "CNBC Business", Category: "economy", URL: "https://www.cnbc.com/id/10001147/device/rss/rss.html", Region: "world"},
+
+		// Football / Iran and international
+		{Name: "Varzesh3 Football", Category: "football", URL: "https://www.varzesh3.com/rss/all", Region: "iran"},
+		{Name: "Sky Sports Football", Category: "football", URL: "https://www.skysports.com/rss/11095", Region: "world"},
+		{Name: "The Guardian Football", Category: "football", URL: "https://www.theguardian.com/football/rss", Region: "world"},
+
+		// Basketball / international
+		{Name: "CBS Sports NBA", Category: "basketball", URL: "https://www.cbssports.com/rss/headlines/nba/", Region: "world"},
+		{Name: "The Athletic NBA", Category: "basketball", URL: "https://www.nytimes.com/athletic/rss/nba/", Region: "world"},
+		{Name: "Eurohoops", Category: "basketball", URL: "https://www.eurohoops.net/en/feed/", Region: "world"},
+
+		// Formula 1 / international
+		{Name: "Formula 1 Official", Category: "formula1", URL: "https://www.formula1.com/en/latest/all.xml", Region: "world"},
+		{Name: "Sky Sports F1", Category: "formula1", URL: "https://www.skysports.com/rss/12433", Region: "world"},
+		{Name: "Autosport", Category: "formula1", URL: "https://www.autosport.com/rss/feed/f1", Region: "world"},
+
+		// Technology
 		{Name: "The Verge", Category: "technology", URL: "https://www.theverge.com/rss/index.xml", Region: "world"},
 		{Name: "Digiato", Category: "technology", URL: "https://digiato.com/feed", Region: "iran"},
 	}
@@ -83,7 +103,6 @@ func main() {
 		collect(ctx, db, feeds)
 		slog.Info("collection finished, starting summarization")
 		today := time.Now().In(loc)
-		// use configured MaxArticles (default 20). Raise via code/config if needed.
 		if err := sendDigest(ctx, db, aiClient, sender, today, cfg.MaxArticles); err != nil {
 			slog.Error("digest failed", "error", err)
 			os.Exit(1)
@@ -153,11 +172,15 @@ func sendDigest(ctx context.Context, db *sql.DB, client *ai.Client, sender *tele
 	start := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
 	end := start.AddDate(0, 0, 1)
 	// First process new articles. Existing summaries are retained and reused on retries.
-	rows, err := db.QueryContext(ctx, `SELECT a.id,a.title,a.raw_text,a.category,a.url,COALESCE(s.name,'منبع')
-		FROM news_articles a LEFT JOIN news_sources s ON s.id=a.source_id
-		WHERE COALESCE(a.published_at,a.fetched_at)>=$1 AND COALESCE(a.published_at,a.fetched_at)<$2
-		AND NOT EXISTS(SELECT 1 FROM news_summaries ns WHERE ns.article_id=a.id)
-		ORDER BY COALESCE(a.published_at,a.fetched_at) DESC LIMIT $3`, start, end, limit*4)
+	rows, err := db.QueryContext(ctx, `WITH pending AS (
+			SELECT a.id,a.title,a.raw_text,a.category,a.url,COALESCE(s.name,'منبع') AS source,
+				ROW_NUMBER() OVER (PARTITION BY a.category ORDER BY COALESCE(a.published_at,a.fetched_at) DESC) AS rn
+			FROM news_articles a LEFT JOIN news_sources s ON s.id=a.source_id
+			WHERE COALESCE(a.published_at,a.fetched_at)>=$1 AND COALESCE(a.published_at,a.fetched_at)<$2
+			AND NOT EXISTS(SELECT 1 FROM news_summaries ns WHERE ns.article_id=a.id)
+		)
+		SELECT id,title,raw_text,category,url,source FROM pending WHERE rn <= $3
+		ORDER BY category,rn`, start, end, limit*3)
 	if err != nil {
 		return err
 	}
@@ -189,11 +212,15 @@ func sendDigest(ctx context.Context, db *sql.DB, client *ai.Client, sender *tele
 	rows.Close()
 
 	// Build from all summaries for the date, including summaries created by an earlier attempt.
-	resultRows, err := db.QueryContext(ctx, `SELECT ns.title_fa,ns.summary_fa,ns.importance,ns.category,a.url,COALESCE(s.name,'منبع')
-		FROM news_summaries ns JOIN news_articles a ON a.id=ns.article_id
-		LEFT JOIN news_sources s ON s.id=a.source_id
-		WHERE COALESCE(a.published_at,a.fetched_at)>=$1 AND COALESCE(a.published_at,a.fetched_at)<$2
-		ORDER BY ns.importance DESC, COALESCE(a.published_at,a.fetched_at) DESC LIMIT $3`, start, end, limit)
+	resultRows, err := db.QueryContext(ctx, `WITH ranked AS (
+			SELECT ns.title_fa,ns.summary_fa,ns.importance,ns.category,a.url,COALESCE(s.name,'منبع') AS source,
+				ROW_NUMBER() OVER (PARTITION BY ns.category ORDER BY ns.importance DESC, COALESCE(a.published_at,a.fetched_at) DESC) AS rn
+			FROM news_summaries ns JOIN news_articles a ON a.id=ns.article_id
+			LEFT JOIN news_sources s ON s.id=a.source_id
+			WHERE COALESCE(a.published_at,a.fetched_at)>=$1 AND COALESCE(a.published_at,a.fetched_at)<$2
+		)
+		SELECT title_fa,summary_fa,importance,category,url,source FROM ranked
+		WHERE rn <= $3 ORDER BY category, importance DESC`, start, end, limit)
 	if err != nil {
 		return err
 	}
@@ -210,25 +237,34 @@ func sendDigest(ctx context.Context, db *sql.DB, client *ai.Client, sender *tele
 	if err = resultRows.Err(); err != nil {
 		return err
 	}
-	body := digest.Build(date, items)
+	messages := digest.BuildMessages(date, items, 3900)
+	bodies := make([]string, 0, len(messages))
+	for _, message := range messages {
+		bodies = append(bodies, message.Text)
+	}
+	body := strings.Join(bodies, "\n\n---\n\n")
 	_, err = db.ExecContext(ctx, `INSERT INTO daily_digests(digest_date,timezone,status,body)
 		VALUES($1,$2,'prepared',$3) ON CONFLICT(digest_date) DO UPDATE SET body=EXCLUDED.body,status='prepared'`, date.Format("2006-01-02"), os.Getenv("APP_TIMEZONE"), body)
 	if err != nil {
 		return err
 	}
-	slog.Info("sending telegram message", "length", len(body))
-	if err = sender.Send(body); err != nil {
+	if len(messages) == 0 {
+		slog.Warn("no news summaries available for digest", "date", date.Format("2006-01-02"))
+		return nil
+	}
+	slog.Info("sending categorized Telegram messages", "messages", len(messages), "articles", len(items))
+	if err = sender.SendBatch(bodies); err != nil {
 		return err
 	}
-	slog.Info("telegram message sent")
+	slog.Info("all categorized Telegram messages sent")
 	_, err = db.ExecContext(ctx, `UPDATE daily_digests SET status='sent',sent_at=NOW() WHERE digest_date=$1`, date.Format("2006-01-02"))
 	return err
 }
 
 func runMigrations(ctx context.Context, db *sql.DB) error {
-	b, err := os.ReadFile("/../../migrations/001_init.sql")
+	b, err := os.ReadFile("migrations/001_init.sql")
 	if err != nil {
-		b, err = os.ReadFile("../../migrations/001_init.sql")
+		b, err = os.ReadFile("migrations/001_init.sql")
 	}
 	if err != nil {
 		return err

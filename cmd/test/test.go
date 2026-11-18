@@ -66,9 +66,10 @@ func main() {
 	fmt.Println("✅ Migrations applied")
 
 	feeds := []collector.Feed{
-		{Name: "BBC Persian", Category: "politics", URL: "https://feeds.bbci.co.uk/persian/rss.xml", Region: "iran_world"},
+		{Name: "DW Persian", Category: "politics", URL: "https://rss.dw.com/xml/rss-per-all_volltext", Region: "iran_world"},
 		{Name: "The Verge", Category: "technology", URL: "https://www.theverge.com/rss/index.xml", Region: "world"},
-		{Name: "ESPN", Category: "sports", URL: "https://www.espn.com/espn/rss/news", Region: "world"},
+		{Name: "The Athletic NBA", Category: "basketball", URL: "https://www.nytimes.com/athletic/rss/nba/", Region: "world"},
+		{Name: "Autosport F1", Category: "formula1", URL: "https://www.autosport.com/rss/feed/f1", Region: "world"},
 	}
 
 	fmt.Println("\n📡 Fetching sample RSS feeds...")
@@ -109,10 +110,12 @@ func main() {
 			{AI: ai.Result{TitleFA: "نمونه عنوان سیاسی", SummaryFA: "این یک خلاصه آزمایشی حداکثر هفتاد کلمه‌ای است که برای تست قالب پیام نوشته شده. رویداد مهمی در حوزه سیاست رخ داده و تأثیرات آن بررسی می‌شود.", Importance: 8, Category: "politics"}, URL: sampleItems[0].URL, Source: sampleItems[0].Source},
 			{AI: ai.Result{TitleFA: "نمونه فناوری", SummaryFA: "شرکت بزرگی محصول جدیدی معرفی کرد که می‌تواند بازار را تغییر دهد. جزئیات فنی و قیمت هنوز اعلام نشده اما انتظارات بالاست.", Importance: 7, Category: "technology"}, URL: "https://example.com", Source: "The Verge"},
 		}
-		msg := digest.Build(time.Now(), items)
-		fmt.Println("\n========== نمونه پیام تلگرام ==========")
-		fmt.Println(msg)
-		fmt.Println("======================================")
+		messages := digest.BuildMessages(time.Now(), items, 3900)
+		fmt.Println("\n========== نمونه پیام‌های تلگرام ==========")
+		for _, msg := range messages {
+			fmt.Printf("\n[%s]\n%s\n", msg.Category, msg.Text)
+		}
+		fmt.Println("==========================================")
 		return
 	}
 
@@ -137,17 +140,21 @@ func main() {
 		return
 	}
 
-	msg := digest.Build(time.Now(), digestItems)
-	fmt.Println("\n========== پیام نهایی ==========")
-	fmt.Println(msg)
-	fmt.Println("================================")
+	messages := digest.BuildMessages(time.Now(), digestItems, 3900)
+	bodies := make([]string, 0, len(messages))
+	fmt.Println("\n========== پیام‌های نهایی ==========")
+	for _, msg := range messages {
+		fmt.Printf("\n[%s]\n%s\n", msg.Category, msg.Text)
+		bodies = append(bodies, msg.Text)
+	}
+	fmt.Println("==================================")
 
 	token := os.Getenv("TELEGRAM_BOT_TOKEN")
 	chatID := os.Getenv("TELEGRAM_CHAT_ID")
 	if token != "" && chatID != "" {
 		fmt.Println("\n📤 Sending to Telegram...")
 		sender := &telegram.Sender{Token: token, ChatID: chatID}
-		if err := sender.Send(msg); err != nil {
+		if err := sender.SendBatch(bodies); err != nil {
 			fmt.Printf("❌ Telegram error: %v\n", err)
 		} else {
 			fmt.Println("✅ Message sent successfully!")
@@ -228,4 +235,3 @@ func fatal(err error) {
 	fmt.Fprintln(os.Stderr, "FATAL:", err)
 	os.Exit(1)
 }
-

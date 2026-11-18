@@ -1,24 +1,30 @@
-# لیست منابع خبری. قبل از استفاده در پروداکشن، دسترسی و شرایط استفاده را بررسی کنید.
+# منابع خبری فعال؛ همین فهرست در cmd/server/main.go نیز تعریف شده است.
+# فیدهای بین‌المللی ورزشی عمداً از Varzesh3 جدا هستند.
 feeds:
   # سیاسی / ایران و جهان
-  - name: BBC Persian
+  - name: DW Persian
     category: politics
-    url: https://feeds.bbci.co.uk/persian/rss.xml
+    url: https://rss.dw.com/xml/rss-per-all_volltext
     region: iran_world
-
+  - name: Radio Farda
+    category: politics
+    url: https://www.radiofarda.com/api/z-pqpiev-qpp
+    region: iran_world
+  - name: Iran International
+    category: politics
+    url: https://www.iranintl.com/fa/rss
+    region: iran_world
   - name: ISNA
     category: politics
     url: https://www.isna.ir/rss
     region: iran
-
   - name: IRNA
     category: politics
     url: https://www.irna.ir/rss
     region: iran
-
-  - name: Tasnim
+  - name: Mehr News
     category: politics
-    url: https://www.tasnimnews.com/fa/rss/feed
+    url: https://www.mehrnews.com/rss
     region: iran
 
   # اقتصادی
@@ -26,29 +32,58 @@ feeds:
     category: economy
     url: https://www.isna.ir/rss/tp/20
     region: iran
-
-  - name: Reuters Business
+  - name: CNBC Business
     category: economy
-    url: https://feeds.reuters.com/reuters/businessNews
+    url: https://www.cnbc.com/id/10001147/device/rss/rss.html
     region: world
 
-  # ورزشی
-  - name: ESPN
-    category: sports
-    url: https://www.espn.com/espn/rss/news
-    region: world
-
-  - name: Varzesh3
-    category: sports
-    url: https://www.varzesh3.ir/rss/all
+  # فوتبال / ایران و جهان
+  - name: Varzesh3 Football
+    category: football
+    url: https://www.varzesh3.com/rss/all
     region: iran
+  - name: Sky Sports Football
+    category: football
+    url: https://www.skysports.com/rss/11095
+    region: world
+  - name: The Guardian Football
+    category: football
+    url: https://www.theguardian.com/football/rss
+    region: world
+
+  # بسکتبال / جهان
+  - name: CBS Sports NBA
+    category: basketball
+    url: https://www.cbssports.com/rss/headlines/nba/
+    region: world
+  - name: The Athletic NBA
+    category: basketball
+    url: https://www.nytimes.com/athletic/rss/nba/
+    region: world
+  - name: Eurohoops
+    category: basketball
+    url: https://www.eurohoops.net/en/feed/
+    region: world
+
+  # فرمول یک / جهان
+  - name: Formula 1 Official
+    category: formula1
+    url: https://www.formula1.com/en/latest/all.xml
+    region: world
+  - name: Sky Sports F1
+    category: formula1
+    url: https://www.skysports.com/rss/12433
+    region: world
+  - name: Autosport
+    category: formula1
+    url: https://www.autosport.com/rss/feed/f1
+    region: world
 
   # فناوری
   - name: The Verge
     category: technology
     url: https://www.theverge.com/rss/index.xml
     region: world
-
   - name: Digiato
     category: technology
     url: https://digiato.com/feed

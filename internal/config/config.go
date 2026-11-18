@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -25,7 +26,7 @@ func Load() (Config, error) {
 		Timezone:        env("APP_TIMEZONE", "Asia/Tehran"),
 		DigestTime:      env("DIGEST_TIME", "08:00"),
 		CollectInterval: env("COLLECT_INTERVAL", "30m"),
-		MaxArticles:     16,
+		MaxArticles:     envInt("MAX_ARTICLES_PER_CATEGORY", 20),
 	}
 	if c.DatabaseURL == "" {
 		return c, fmt.Errorf("DATABASE_URL is required")
@@ -43,6 +44,14 @@ func Load() (Config, error) {
 		return c, fmt.Errorf("invalid APP_TIMEZONE: %w", err)
 	}
 	return c, nil
+}
+
+func envInt(k string, d int) int {
+	v, err := strconv.Atoi(os.Getenv(k))
+	if err != nil || v < 1 {
+		return d
+	}
+	return v
 }
 
 func env(k, d string) string {
